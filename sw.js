@@ -1,5 +1,5 @@
 // PMF-MCR Service Worker — offline support
-const CACHE = 'pmf-mcr-v2';
+const CACHE = 'pmf-mcr-v3';
 const CHART_CDN = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
 
 const PRECACHE = [

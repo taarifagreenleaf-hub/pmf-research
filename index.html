@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src *; font-src 'self';">
 <title>PMF-MCR Research Platform — TTCL NICTBB</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1a3a5c">
@@ -852,50 +853,122 @@ let charts={};
 // ═══════════════════════════════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════════════════════════════
+// ── Login rate limiting ──────────────────────────────────────
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS   = 5 * 60 * 1000; // 5 minutes
+function getLoginState(uid){
+  return JSON.parse(localStorage.getItem('pmfLogin_'+uid)||'{"attempts":0,"lockedUntil":0}');
+}
+function setLoginState(uid,state){localStorage.setItem('pmfLogin_'+uid,JSON.stringify(state));}
+function clearLoginState(uid){localStorage.removeItem('pmfLogin_'+uid);}
+
 function doLogin(){
-  const u=document.getElementById('loginUser').value.trim();
+  const u=document.getElementById('loginUser').value.trim().toLowerCase();
   const p=document.getElementById('loginPass').value;
+  const errEl=document.getElementById('loginError');
+
+  // Rate limit check
+  const ls=getLoginState(u);
+  const now=Date.now();
+  if(ls.lockedUntil>now){
+    const mins=Math.ceil((ls.lockedUntil-now)/60000);
+    errEl.textContent=`Too many failed attempts. Try again in ${mins} minute${mins>1?'s':''}.`;
+    errEl.style.display='block';return;
+  }
+
   const user=getAllUsers().find(x=>x.id===u&&x.pass===p);
-  if(!user){document.getElementById('loginError').style.display='block';return;}
+  if(!user){
+    ls.attempts=(ls.attempts||0)+1;
+    if(ls.attempts>=LOGIN_MAX_ATTEMPTS){
+      ls.lockedUntil=now+LOGIN_LOCKOUT_MS;
+      errEl.textContent='Account locked for 5 minutes after too many failed attempts.';
+    } else {
+      const left=LOGIN_MAX_ATTEMPTS-ls.attempts;
+      errEl.textContent=`Invalid credentials. ${left} attempt${left>1?'s':''} remaining.`;
+    }
+    setLoginState(u,ls);
+    errEl.style.display='block';return;
+  }
+
+  // Successful login — clear lockout state
+  clearLoginState(u);
   currentUser=user;
+  lastActivity=Date.now();
   document.getElementById('loginPage').style.display='none';
   document.getElementById('app').style.display='grid';
-  document.getElementById('welcomeMsg').textContent=user.name+' ('+user.role+')';
+  document.getElementById('welcomeMsg').textContent=escapeHTML(user.name)+' ('+escapeHTML(user.role)+')';
   document.querySelectorAll('.admin-only').forEach(el=>el.style.display=user.level==='admin'?'':'none');
   buildForms();
   showPage('dashboard');
 }
 document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('loginUser').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-function doLogout(){currentUser=null;document.getElementById('loginPage').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('loginUser').value='';document.getElementById('loginPass').value='';document.getElementById('loginError').style.display='none';}
+function doLogout(){
+  currentUser=null;
+  document.getElementById('loginPage').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+  document.getElementById('loginError').textContent='Invalid credentials. Please try again.';
+  document.getElementById('loginError').style.display='none';
+  builtFormPages.clear();
+}
 
 // ═══════════════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 function showPage(id){
+  lastActivity=Date.now();
   document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
   document.querySelectorAll('.navItem').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.remove('hidden');
   const nav=document.getElementById('nav-'+id);
   if(nav)nav.classList.add('active');
+  // Lazy-build form pages on first visit
+  if(id.startsWith('form')) buildFormPage(id);
   if(id==='dashboard')renderDashboard();
   if(id==='admin')renderAdmin();
   if(id==='analysis')renderAnalysis();
 }
 
 // ═══════════════════════════════════════════════════════════════
-// BUILD FORMS
+// SECURITY HELPERS
 // ═══════════════════════════════════════════════════════════════
+function escapeHTML(str){
+  return String(str||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#x27;');
+}
+
+// Max lengths for user inputs
+const MAX_INPUT = {name:80, id:30, pass:60, site:60, notes:500};
+function sanitize(str, maxKey){
+  return String(str||'').trim().substring(0, MAX_INPUT[maxKey]||200);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD FORMS  (lazy — each form page built only on first visit)
+// ═══════════════════════════════════════════════════════════════
+const builtFormPages = new Set();
+
 function buildForms(){
-  buildLikertTable('qA_tbody',QA_ITEMS,true,'qA_');
-  buildLikertTable('qB_tbody',QB_ITEMS.map(s=>({cat:null,items:[s]})),false,'qB_');
-  buildLikertTable('qC_tbody',QC_ITEMS,true,'qC_');
-  buildCostFields();
-  buildObsTable();
+  // Always rebuild shared dropdown lists (sites may have changed)
   buildSiteDropdowns();
-  buildSupTable();
-  buildMTITable();
-  buildValTable();
+}
+
+function buildFormPage(id){
+  if(builtFormPages.has(id)) return;
+  builtFormPages.add(id);
+  if(id==='formA'){buildLikertTable('qA_tbody',QA_ITEMS,true,'qA_');}
+  if(id==='formB'){buildLikertTable('qB_tbody',QB_ITEMS.map(s=>({cat:null,items:[s]})),false,'qB_');buildCostFields();}
+  if(id==='formC'){buildLikertTable('qC_tbody',QC_ITEMS,true,'qC_');}
+  if(id==='formObs'){buildObsTable();}
+  if(id==='formSup'){buildSupTable();}
+  if(id==='formMTI'){buildMTITable();}
+  if(id==='formVal'){buildValTable();}
 }
 
 function buildLikertTable(tbodyId,groups,hasCats,prefix){
@@ -1395,35 +1468,50 @@ function renderUserTable(){
   const tb=document.getElementById('userTableBody');
   if(!tb)return;
   tb.innerHTML='';
-  // Admin row (read-only)
-  tb.innerHTML+=`<tr style="background:#f0f5fa">
-    <td><code>admin</code></td>
-    <td>${ADMIN_USER.name}</td>
-    <td><strong>Administrator</strong></td>
-    <td><em style="color:#aaa">••••••••</em></td>
-    <td><span style="color:#aaa;font-size:11px">Protected</span></td>
-  </tr>`;
+  // Admin row (read-only) — safe static values
+  const adminRow=tb.insertRow();
+  adminRow.style.background='#f0f5fa';
+  adminRow.innerHTML=`<td><code>admin</code></td><td>${escapeHTML(ADMIN_USER.name)}</td><td><strong>Administrator</strong></td><td><em style="color:#aaa">••••••••</em></td><td><span style="color:#aaa;font-size:11px">Protected</span></td>`;
+
   getUsers().forEach(u=>{
-    tb.innerHTML+=`<tr>
-      <td><code>${u.id}</code></td>
-      <td>${u.name}</td>
-      <td>${u.role}</td>
-      <td><span style="font-family:monospace;color:#888">${u.pass}</span></td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-outline" style="padding:4px 10px;font-size:11px;margin-right:4px" onclick="editUser('${u.id}')">Edit</button>
-        <button class="btn btn-red"     style="padding:4px 10px;font-size:11px" onclick="deleteUser('${u.id}')">Remove</button>
-      </td>
-    </tr>`;
+    const tr=tb.insertRow();
+    // Use textContent for user-supplied values to prevent XSS
+    const tdId=tr.insertCell(); const code=document.createElement('code'); code.textContent=u.id; tdId.appendChild(code);
+    const tdName=tr.insertCell(); tdName.textContent=u.name;
+    const tdRole=tr.insertCell(); tdRole.textContent=u.role;
+    const tdPass=tr.insertCell();
+    // Password: masked by default with toggle
+    const passSpan=document.createElement('span');
+    passSpan.style.cssText='font-family:monospace;color:#888;cursor:pointer;user-select:none';
+    passSpan.title='Click to show/hide';
+    passSpan.dataset.pass=u.pass;
+    passSpan.dataset.visible='0';
+    passSpan.textContent='••••••••';
+    passSpan.onclick=function(){
+      this.dataset.visible=this.dataset.visible==='0'?'1':'0';
+      this.textContent=this.dataset.visible==='1'?this.dataset.pass:'••••••••';
+    };
+    tdPass.appendChild(passSpan);
+    const tdAct=tr.insertCell(); tdAct.style.whiteSpace='nowrap';
+    const editBtn=document.createElement('button');
+    editBtn.className='btn btn-outline'; editBtn.style.cssText='padding:4px 10px;font-size:11px;margin-right:4px';
+    editBtn.textContent='Edit'; editBtn.onclick=()=>editUser(u.id);
+    const delBtn=document.createElement('button');
+    delBtn.className='btn btn-red'; delBtn.style.cssText='padding:4px 10px;font-size:11px';
+    delBtn.textContent='Remove'; delBtn.onclick=()=>deleteUser(u.id);
+    tdAct.appendChild(editBtn); tdAct.appendChild(delBtn);
   });
 }
 
 function saveUser(){
-  const name=document.getElementById('uf_name').value.trim();
-  const id=document.getElementById('uf_id').value.trim().toLowerCase().replace(/\s+/g,'');
-  const pass=document.getElementById('uf_pass').value.trim();
+  const name=sanitize(document.getElementById('uf_name').value,'name');
+  const id=sanitize(document.getElementById('uf_id').value,'id').toLowerCase().replace(/[^a-z0-9_]/g,'');
+  const pass=sanitize(document.getElementById('uf_pass').value,'pass');
   const role=document.getElementById('uf_role').value;
   const msg=document.getElementById('userFormMsg');
   if(!name||!id||!pass||!role){msg.textContent='All fields are required.';return;}
+  if(!/^[a-z0-9_]+$/.test(id)){msg.textContent='User ID may only contain letters, numbers and underscores.';return;}
+  if(pass.length<4){msg.textContent='Password must be at least 4 characters.';return;}
   if(id==='admin'){msg.textContent='User ID "admin" is reserved.';return;}
 
   const users=getUsers();
@@ -1550,6 +1638,41 @@ function clearAllData(){
   renderDashboard();renderAdmin();
   alert('All response data cleared.');
 }
+
+// ═══════════════════════════════════════════════════════════════
+// SESSION TIMEOUT — auto-logout after 30 min inactivity
+// ═══════════════════════════════════════════════════════════════
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+let lastActivity = Date.now();
+
+// Track user activity
+['click','keydown','touchstart','scroll'].forEach(evt=>
+  document.addEventListener(evt, ()=>{ if(currentUser) lastActivity=Date.now(); }, {passive:true})
+);
+
+setInterval(()=>{
+  if(currentUser && Date.now()-lastActivity > SESSION_TIMEOUT_MS){
+    alert('Your session has expired after 30 minutes of inactivity. Please log in again.');
+    doLogout();
+  }
+}, 60 * 1000); // check every minute
+
+// ═══════════════════════════════════════════════════════════════
+// STORAGE QUOTA MONITOR
+// ═══════════════════════════════════════════════════════════════
+function checkStorageQuota(){
+  if(!navigator.storage||!navigator.storage.estimate) return;
+  navigator.storage.estimate().then(({usage,quota})=>{
+    const pct=quota>0?Math.round(usage/quota*100):0;
+    if(pct>80){
+      console.warn(`Storage at ${pct}% capacity`);
+      const el=document.getElementById('queueInfo');
+      if(el) el.title=`Storage ${pct}% full — consider exporting and clearing old data`;
+    }
+  });
+}
+// Run quota check on load and after each form submission
+checkStorageQuota();
 
 // ═══════════════════════════════════════════════════════════════
 // KEYBOARD
@@ -1685,23 +1808,41 @@ function captureGPS(){
 let obsPhotos=[];  // [{dataUrl, lat, lng, ts}]
 let currentGPS={lat:'',lng:'',acc:''};
 
+// Compress image to max 900px wide/tall, JPEG 72% quality before storing
+function compressPhoto(dataUrl, maxPx=900, quality=0.72){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const scale=Math.min(1, maxPx/Math.max(img.width,img.height));
+      const w=Math.round(img.width*scale);
+      const h=Math.round(img.height*scale);
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg',quality));
+    };
+    img.onerror=()=>resolve(dataUrl); // fallback: store as-is
+    img.src=dataUrl;
+  });
+}
+
 function handlePhoto(event){
   const file=event.target.files[0];
   if(!file)return;
+  // Reject files over 20MB before even reading
+  if(file.size>20*1024*1024){alert('Photo is too large (max 20 MB). Please choose a smaller image.');event.target.value='';return;}
   const reader=new FileReader();
-  reader.onload=e=>{
-    const dataUrl=e.target.result;
+  reader.onload=async e=>{
+    const compressed=await compressPhoto(e.target.result);
+    checkStorageQuota();
     const lat=document.getElementById('obs_lat').value||currentGPS.lat||'';
     const lng=document.getElementById('obs_lng').value||currentGPS.lng||'';
     const ts=new Date().toISOString();
-    const idx=obsPhotos.length;
-    obsPhotos.push({dataUrl,lat,lng,ts});
+    obsPhotos.push({dataUrl:compressed,lat,lng,ts});
     renderPhotoGrid();
-    // Save photo data to localStorage keyed by session
-    localStorage.setItem('pmfPhoto_'+idx+'_'+ts.slice(0,10), dataUrl);
   };
   reader.readAsDataURL(file);
-  event.target.value=''; // reset so same photo can be re-added
+  event.target.value='';
 }
 
 function renderPhotoGrid(){
