@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMF-MCR Research Platform — TTCL NICTBB</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#222;font-size:14px}
+a{color:inherit;text-decoration:none}
+
+/* ── LOGIN ── */
+#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1a3a5c,#2e6da4)}
+.loginBox{background:#fff;border-radius:12px;padding:40px 36px;width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.2)}
+.loginBox h1{font-size:20px;color:#1a3a5c;margin-bottom:4px}
+.loginBox p{color:#666;font-size:12px;margin-bottom:24px}
+.loginBox label{display:block;font-size:12px;font-weight:600;color:#444;margin-bottom:4px;margin-top:14px}
+.loginBox input{width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:6px;font-size:14px}
+.loginBox input:focus{outline:none;border-color:#2e6da4}
+.btnPrimary{width:100%;padding:11px;background:#2e6da4;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;margin-top:20px}
+.btnPrimary:hover{background:#1a3a5c}
+.loginError{color:#c0392b;font-size:12px;margin-top:10px;display:none}
+
+/* ── LAYOUT ── */
+#app{display:none;height:100vh;display:grid;grid-template-columns:220px 1fr;grid-template-rows:56px 1fr;grid-template-areas:"header header""sidebar main"}
+#header{grid-area:header;background:#1a3a5c;color:#fff;display:flex;align-items:center;padding:0 20px;gap:16px;z-index:10;box-shadow:0 2px 6px rgba(0,0,0,0.3)}
+#header h1{font-size:16px;font-weight:700;flex:1}
+#header span{font-size:12px;color:#a8c8e8}
+#logoutBtn{background:rgba(255,255,255,0.15);border:none;color:#fff;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px}
+#logoutBtn:hover{background:rgba(255,255,255,0.25)}
+#sidebar{grid-area:sidebar;background:#1e2d3e;padding:12px 0;overflow-y:auto}
+.navSection{color:#7a9bbf;font-size:10px;font-weight:700;text-transform:uppercase;padding:14px 16px 6px;letter-spacing:.8px}
+.navItem{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#c5d8ea;cursor:pointer;font-size:13px;border-left:3px solid transparent;transition:all .15s}
+.navItem:hover{background:rgba(255,255,255,0.07);color:#fff}
+.navItem.active{background:rgba(46,109,164,0.3);color:#fff;border-left-color:#2e6da4}
+.navItem .icon{font-size:15px;width:20px;text-align:center}
+#main{grid-area:main;overflow-y:auto;padding:24px}
+
+/* ── CARDS & PANELS ── */
+.pageTitle{font-size:20px;font-weight:700;color:#1a3a5c;margin-bottom:4px}
+.pageSubtitle{font-size:12px;color:#666;margin-bottom:20px}
+.card{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:16px}
+.cardGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:24px}
+.formCard{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border-top:4px solid #2e6da4;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.formCard:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.12)}
+.formCard h3{font-size:14px;color:#1a3a5c;margin-bottom:6px}
+.formCard p{font-size:11px;color:#777;line-height:1.5}
+.formCard .badge{display:inline-block;background:#e8f0f8;color:#2e6da4;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:8px}
+
+/* ── FORMS ── */
+.formWrap{max-width:760px}
+.formSection{background:#fff;border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+.formSection h3{font-size:14px;font-weight:700;color:#1a3a5c;padding-bottom:10px;border-bottom:1px solid #e8edf2;margin-bottom:14px}
+.formSection .hint{font-size:11px;color:#888;margin-bottom:12px;font-style:italic}
+.fGroup{margin-bottom:14px}
+.fGroup label{display:block;font-size:12px;font-weight:600;color:#444;margin-bottom:5px}
+.fGroup input,.fGroup select,.fGroup textarea{width:100%;padding:8px 10px;border:1px solid #d0d7de;border-radius:6px;font-size:13px;font-family:inherit}
+.fGroup input:focus,.fGroup select:focus,.fGroup textarea:focus{outline:none;border-color:#2e6da4;box-shadow:0 0 0 3px rgba(46,109,164,0.12)}
+.fGroup textarea{resize:vertical;min-height:70px}
+.required{color:#c0392b}
+.siteInputWrap{display:flex;gap:8px}
+.siteInputWrap select{flex:1}
+.siteInputWrap input{flex:1}
+
+/* Likert scale */
+.likertTable{width:100%;border-collapse:collapse;font-size:12px}
+.likertTable th{background:#f5f7fa;padding:8px 6px;text-align:center;color:#555;font-weight:600;border-bottom:2px solid #e0e6ed}
+.likertTable th:first-child{text-align:left;padding-left:10px}
+.likertTable td{padding:9px 6px;border-bottom:1px solid #f0f2f5;text-align:center;vertical-align:middle}
+.likertTable td:first-child{text-align:left;padding-left:10px;color:#333;max-width:320px;line-height:1.4}
+.likertTable tr:last-child td{border-bottom:none}
+.likertTable input[type=radio]{accent-color:#2e6da4;width:16px;height:16px;cursor:pointer}
+.likertTable .catRow td{background:#edf2f7;font-weight:700;font-size:11px;color:#2e6da4;padding:6px 10px}
+.checkboxGroup{display:flex;flex-wrap:wrap;gap:10px}
+.checkboxGroup label{display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;font-weight:normal}
+
+/* Observation checklist table */
+.checkTable{width:100%;border-collapse:collapse;font-size:12px}
+.checkTable th{background:#1a3a5c;color:#fff;padding:8px 10px;text-align:left;font-size:11px}
+.checkTable td{padding:8px 10px;border-bottom:1px solid #eee;vertical-align:middle}
+.checkTable tr:nth-child(even){background:#fafafa}
+.checkTable select{padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;width:100%}
+.checkTable input[type=text]{padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;width:100%}
+
+/* Supervisor / MTI / Validation tables */
+.dataTable{width:100%;border-collapse:collapse;font-size:12px}
+.dataTable th{background:#1a3a5c;color:#fff;padding:8px 10px;text-align:left;font-size:11px;white-space:nowrap}
+.dataTable td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:middle}
+.dataTable tr:nth-child(even){background:#fafafa}
+.dataTable input{width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px}
+.dataTable select{width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px}
+
+/* Buttons */
+.btnRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.btn{padding:9px 20px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+.btn-blue{background:#2e6da4;color:#fff}.btn-blue:hover{background:#1a3a5c}
+.btn-green{background:#27ae60;color:#fff}.btn-green:hover{background:#1e8449}
+.btn-red{background:#c0392b;color:#fff}.btn-red:hover{background:#962d22}
+.btn-gray{background:#e0e6ed;color:#333}.btn-gray:hover{background:#c8d6e5}
+.btn-outline{background:#fff;color:#2e6da4;border:1px solid #2e6da4}.btn-outline:hover{background:#e8f0f8}
+
+/* ── ANALYSIS ── */
+.statsGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.statBox{background:#fff;border-radius:8px;padding:16px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.07)}
+.statBox .val{font-size:28px;font-weight:700;color:#2e6da4}
+.statBox .lbl{font-size:11px;color:#777;margin-top:4px}
+.chartWrap{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:16px}
+.chartWrap h3{font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:14px}
+canvas{max-height:300px}
+.tabBar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px}
+.tabBtn{padding:7px 16px;border-radius:6px;border:1px solid #d0d7de;background:#fff;cursor:pointer;font-size:12px;font-weight:600;color:#555}
+.tabBtn.active{background:#2e6da4;color:#fff;border-color:#2e6da4}
+
+/* ── ADMIN PANEL ── */
+.adminGrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.adminGrid{grid-template-columns:1fr}}
+.siteList{list-style:none;max-height:320px;overflow-y:auto;border:1px solid #e0e6ed;border-radius:6px}
+.siteList li{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #f0f2f5;font-size:13px}
+.siteList li:last-child{border-bottom:none}
+.siteList .removeBtn{background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px;line-height:1}
+.siteList .removeBtn:hover{color:#962d22}
+.userTable{width:100%;border-collapse:collapse;font-size:13px}
+.userTable th{background:#f5f7fa;padding:8px 10px;text-align:left;border-bottom:2px solid #e0e6ed;font-size:11px;font-weight:700;color:#555}
+.userTable td{padding:8px 10px;border-bottom:1px solid #f0f2f5}
+.userTable select{padding:3px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px}
+
+/* ── ALERTS ── */
+.alert{padding:12px 16px;border-radius:6px;font-size:13px;margin-bottom:16px}
+.alert-success{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
+.alert-error{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}
+.alert-info{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb}
+
+/* ── RESPONSIVE TABLES ── */
+.tableWrap{overflow-x:auto}
+
+/* ── UTILS ── */
+.hidden{display:none!important}
+.mt8{margin-top:8px}
+.noData{text-align:center;padding:40px;color:#aaa;font-size:13px}
+hr{border:none;border-top:1px solid #e8edf2;margin:16px 0}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="loginPage">
+  <div class="loginBox">
+    <h1>PMF-MCR Research Platform</h1>
+    <p>TTCL NICTBB Generator Maintenance | DIT ME24MM</p>
+    <label>User ID</label>
+    <input type="text" id="loginUser" placeholder="Enter user ID" autocomplete="username">
+    <label>Password</label>
+    <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
+    <div class="loginError" id="loginError">Invalid credentials. Please try again.</div>
+    <button class="btnPrimary" onclick="doLogin()">Sign In</button>
+    <p style="font-size:11px;color:#aaa;margin-top:14px;text-align:center">PMF-MCR v1.0 | Conrad Katakweba | DIT 2026</p>
+  </div>
+</div>
+
+<!-- ══════════════ APP SHELL ══════════════ -->
+<div id="app" style="display:none">
+  <div id="header">
+    <h1>PMF-MCR Research Platform</h1>
+    <span id="welcomeMsg"></span>
+    <button id="logoutBtn" onclick="doLogout()">Sign Out</button>
+  </div>
+  <div id="sidebar">
+    <div class="navSection">Dashboard</div>
+    <div class="navItem active" onclick="showPage('dashboard')" id="nav-dashboard"><span class="icon">🏠</span> Home</div>
+    <div class="navSection">Forms — Data Entry</div>
+    <div class="navItem" onclick="showPage('formA')" id="nav-formA"><span class="icon">📋</span> Questionnaire A (SO1)</div>
+    <div class="navItem" onclick="showPage('formB')" id="nav-formB"><span class="icon">📋</span> Questionnaire B (SO2/SO3)</div>
+    <div class="navItem" onclick="showPage('formC')" id="nav-formC"><span class="icon">📋</span> Questionnaire C (SO4)</div>
+    <div class="navItem" onclick="showPage('formObs')" id="nav-formObs"><span class="icon">🔍</span> Site Observation</div>
+    <div class="navItem" onclick="showPage('formSup')" id="nav-formSup"><span class="icon">📊</span> Supervisor Form</div>
+    <div class="navItem" onclick="showPage('formMTI')" id="nav-formMTI"><span class="icon">⚙️</span> MTI Calibration</div>
+    <div class="navItem" onclick="showPage('formVal')" id="nav-formVal"><span class="icon">✅</span> Model Validation</div>
+    <div class="navSection">Analysis</div>
+    <div class="navItem" onclick="showPage('analysis')" id="nav-analysis"><span class="icon">📈</span> Analysis Dashboard</div>
+    <div class="navSection admin-only">Administration</div>
+    <div class="navItem admin-only" onclick="showPage('admin')" id="nav-admin"><span class="icon">🛠️</span> Admin Panel</div>
+  </div>
+  <div id="main">
+
+    <!-- ── DASHBOARD ── -->
+    <div id="page-dashboard" class="page">
+      <div class="pageTitle">Research Dashboard</div>
+      <div class="pageSubtitle">PMF-MCR Platform — TTCL NICTBB Generator Maintenance Cost Reduction Study</div>
+      <div id="dashStats" class="statsGrid"></div>
+      <div class="cardGrid" id="formCards"></div>
+    </div>
+
+    <!-- ── FORM A ── -->
+    <div id="page-formA" class="page hidden">
+      <div class="pageTitle">Questionnaire A — SO1</div>
+      <div class="pageSubtitle">Factors Affecting Generator Maintenance Costs | 10–12 min | Strictly Confidential</div>
+      <div class="formWrap">
+        <div class="formSection">
+          <h3>Section A: Respondent Information</h3>
+          <div class="fGroup">
+            <label>Role <span class="required">*</span></label>
+            <select id="qA_role">
+              <option value="">— Select —</option>
+              <option>Regional Supervisor</option><option>Maintenance Technician</option>
+              <option>NOC Engineer</option><option>Power Systems Engineer</option>
+            </select>
+          </div>
+          <div class="fGroup">
+            <label>Years on NICTBB power systems <span class="required">*</span></label>
+            <select id="qA_years">
+              <option value="">— Select —</option>
+              <option>&lt; 2 years</option><option>2–5 years</option>
+              <option>5–10 years</option><option>&gt; 10 years</option>
+            </select>
+          </div>
+          <div class="fGroup">
+            <label>Primary site region</label>
+            <input type="text" id="qA_region" placeholder="e.g. Tabora, Mbeya, Kigoma…">
+          </div>
+          <div class="fGroup">
+            <label>Site Name <span class="required">*</span></label>
+            <div class="siteInputWrap">
+              <select id="qA_siteSelect" onchange="syncSiteSelect('qA')"></select>
+              <input type="text" id="qA_siteText" placeholder="Or type site name here">
+            </div>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Section B: Factor Ratings</h3>
+          <div class="hint">Scale: 1 = Very Low Impact &nbsp;|&nbsp; 2 = Low &nbsp;|&nbsp; 3 = Moderate &nbsp;|&nbsp; 4 = High &nbsp;|&nbsp; 5 = Very High Impact</div>
+          <div class="tableWrap">
+          <table class="likertTable" id="qA_table">
+            <thead><tr><th>Statement / Factor</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead>
+            <tbody id="qA_tbody"></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Section C: Short Questions</h3>
+          <div class="fGroup">
+            <label>15. What is the single most important factor driving high maintenance costs at your site?</label>
+            <textarea id="qA_q15" rows="3"></textarea>
+          </div>
+          <div class="fGroup">
+            <label>16. Is the current 3-month calendar maintenance standard appropriate for all sites regardless of utilization?</label>
+            <div class="checkboxGroup mt8">
+              <label><input type="radio" name="qA_q16" value="Yes"> Yes</label>
+              <label><input type="radio" name="qA_q16" value="No"> No</label>
+              <label><input type="radio" name="qA_q16" value="Unsure"> Unsure</label>
+            </div>
+          </div>
+          <div class="fGroup">
+            <label>Brief reason:</label>
+            <input type="text" id="qA_q16reason">
+          </div>
+        </div>
+        <div class="btnRow">
+          <button class="btn btn-green" onclick="submitForm('A')">Submit Response</button>
+          <button class="btn btn-gray" onclick="clearForm('A')">Clear Form</button>
+          <button class="btn btn-outline" onclick="showPage('dashboard')">← Back</button>
+        </div>
+        <div id="alertA" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+    <!-- ── FORM B ── -->
+    <div id="page-formB" class="page hidden">
+      <div class="pageTitle">Questionnaire B — SO2 & SO3</div>
+      <div class="pageSubtitle">Model Calibration and Validation | 8–10 min | Strictly Confidential</div>
+      <div class="formWrap">
+        <div class="formSection">
+          <h3>Respondent Information</h3>
+          <div class="fGroup">
+            <label>Role <span class="required">*</span></label>
+            <select id="qB_role">
+              <option value="">— Select —</option>
+              <option>Regional Supervisor</option><option>Maintenance Technician</option>
+              <option>NOC Engineer</option><option>Power Systems Engineer</option>
+            </select>
+          </div>
+          <div class="fGroup">
+            <label>Years managing NICTBB generators</label>
+            <input type="number" id="qB_years" min="0" max="50" placeholder="e.g. 7">
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Section B: MTI Model Validation</h3>
+          <div class="hint">MTI = MTBF × RCF, where RCF = 0.85 for tropical conditions &nbsp;|&nbsp; Scale: 1 = Strongly Disagree &nbsp;… &nbsp;5 = Strongly Agree</div>
+          <div class="tableWrap">
+          <table class="likertTable" id="qB_table">
+            <thead><tr><th>Statement</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead>
+            <tbody id="qB_tbody"></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Section C: TMC Cost Component Estimates (TZS)</h3>
+          <div class="hint">Enter approximate cost per maintenance event at a typical NICTBB site</div>
+          <div id="qB_costs"></div>
+          <div class="fGroup mt8">
+            <label>Expected maintenance cost reduction (%) at a low-utilization site through run-hour scheduling:</label>
+            <input type="number" id="qB_reduction" min="0" max="100" placeholder="%">
+          </div>
+          <div class="fGroup">
+            <label>Main limitation of calibrating the MTI model from NMS data:</label>
+            <textarea id="qB_limitation" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="btnRow">
+          <button class="btn btn-green" onclick="submitForm('B')">Submit Response</button>
+          <button class="btn btn-gray" onclick="clearForm('B')">Clear Form</button>
+          <button class="btn btn-outline" onclick="showPage('dashboard')">← Back</button>
+        </div>
+        <div id="alertB" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+    <!-- ── FORM C ── -->
+    <div id="page-formC" class="page hidden">
+      <div class="pageTitle">Questionnaire C — SO4</div>
+      <div class="pageSubtitle">PMF-MCR Framework Validation | 8–10 min | Strictly Confidential</div>
+      <div class="formWrap">
+        <div class="formSection">
+          <h3>Respondent Information</h3>
+          <div class="fGroup">
+            <label>Role <span class="required">*</span></label>
+            <select id="qC_role">
+              <option value="">— Select —</option>
+              <option>Regional Supervisor</option><option>Maintenance Technician</option>
+              <option>NOC Engineer</option><option>Power Systems Engineer</option>
+            </select>
+          </div>
+          <div class="fGroup">
+            <label>Total years in TTCL maintenance management</label>
+            <input type="number" id="qC_years" min="0" max="50" placeholder="e.g. 12">
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Section B: Framework Assessment</h3>
+          <div class="hint">Scale: 1 = Strongly Disagree &nbsp;… &nbsp;5 = Strongly Agree</div>
+          <div class="tableWrap">
+          <table class="likertTable" id="qC_table">
+            <thead><tr><th>Statement</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead>
+            <tbody id="qC_tbody"></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Section C: Implementation Assessment</h3>
+          <div class="fGroup">
+            <label>10. Main barrier to implementing PMF-MCR:</label>
+            <div class="checkboxGroup mt8">
+              <label><input type="radio" name="qC_barrier" value="Run-hour data gaps"> Run-hour data gaps</label>
+              <label><input type="radio" name="qC_barrier" value="Management approval"> Management approval</label>
+              <label><input type="radio" name="qC_barrier" value="Technician training"> Technician training</label>
+              <label><input type="radio" name="qC_barrier" value="NMS limitations"> NMS limitations</label>
+              <label><input type="radio" name="qC_barrier" value="Budget"> Budget</label>
+              <label><input type="radio" name="qC_barrier" value="Other"> Other</label>
+            </div>
+          </div>
+          <div class="fGroup">
+            <label>11. Realistic total maintenance cost reduction (%) achievable through PMF-MCR:</label>
+            <input type="number" id="qC_reduction" min="0" max="100" placeholder="%">
+          </div>
+          <div class="fGroup">
+            <label>Additional suggestions to strengthen the PMF-MCR framework:</label>
+            <textarea id="qC_suggestions" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="btnRow">
+          <button class="btn btn-green" onclick="submitForm('C')">Submit Response</button>
+          <button class="btn btn-gray" onclick="clearForm('C')">Clear Form</button>
+          <button class="btn btn-outline" onclick="showPage('dashboard')">← Back</button>
+        </div>
+        <div id="alertC" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+    <!-- ── SITE OBSERVATION ── -->
+    <div id="page-formObs" class="page hidden">
+      <div class="pageTitle">Site Observation Checklist — Appendix VII</div>
+      <div class="pageSubtitle">Complete one form per site visit</div>
+      <div class="formWrap">
+        <div class="formSection">
+          <h3>Site & Visit Details</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="fGroup">
+              <label>Site Name <span class="required">*</span></label>
+              <div class="siteInputWrap" style="flex-direction:column">
+                <select id="obs_siteSelect" onchange="syncSiteSelect('obs')"></select>
+                <input type="text" id="obs_siteText" placeholder="Or type site name" style="margin-top:6px">
+              </div>
+            </div>
+            <div class="fGroup">
+              <label>Region</label>
+              <input type="text" id="obs_region" placeholder="e.g. Tabora">
+            </div>
+            <div class="fGroup">
+              <label>Observer Name <span class="required">*</span></label>
+              <input type="text" id="obs_observer">
+            </div>
+            <div class="fGroup">
+              <label>Date of Visit <span class="required">*</span></label>
+              <input type="date" id="obs_date">
+            </div>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Generator & Battery Quick Assessment</h3>
+          <div class="tableWrap">
+          <table class="checkTable" id="obsTable">
+            <thead><tr><th>#</th><th>Item</th><th>Status</th><th>Reading / Value</th><th>Action Required</th></tr></thead>
+            <tbody id="obs_tbody"></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>General Observations</h3>
+          <div class="fGroup">
+            <textarea id="obs_notes" rows="4" placeholder="General observations about the site…"></textarea>
+          </div>
+        </div>
+        <div class="btnRow">
+          <button class="btn btn-green" onclick="submitForm('Obs')">Submit Response</button>
+          <button class="btn btn-gray" onclick="clearForm('Obs')">Clear Form</button>
+          <button class="btn btn-outline" onclick="showPage('dashboard')">← Back</button>
+        </div>
+        <div id="alertObs" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+    <!-- ── SUPERVISOR FORM ── -->
+    <div id="page-formSup" class="page hidden">
+      <div class="pageTitle">Regional Supervisor Data Collection Form — Appendix VIII</div>
+      <div class="pageSubtitle">Site trip and maintenance activity data for the last quarter | ~5 min</div>
+      <div class="formWrap" style="max-width:900px">
+        <div class="formSection">
+          <h3>Supervisor Details</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+            <div class="fGroup"><label>Supervisor Name <span class="required">*</span></label><input type="text" id="sup_name"></div>
+            <div class="fGroup"><label>Region <span class="required">*</span></label><input type="text" id="sup_region"></div>
+            <div class="fGroup"><label>Date <span class="required">*</span></label><input type="date" id="sup_date"></div>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Site Trip and Maintenance Data (Last Quarter)</h3>
+          <div class="hint">Fill in data for sites you manage. Leave blank for sites not in your region.</div>
+          <div class="tableWrap">
+          <table class="dataTable">
+            <thead><tr>
+              <th>Site Name</th><th>Depot Distance (km)</th>
+              <th>Trip Cost/Visit (TZS)</th><th>Scheduled Visits</th>
+              <th>Corrective Visits</th><th>Emergency Call-outs</th><th>Remarks</th>
+            </tr></thead>
+            <tbody id="sup_tbody"></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Regional Notes</h3>
+          <div class="fGroup">
+            <label>Main logistical constraint for remote site maintenance in your region:</label>
+            <textarea id="sup_constraint" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="btnRow">
+          <button class="btn btn-green" onclick="submitForm('Sup')">Submit Response</button>
+          <button class="btn btn-gray" onclick="clearForm('Sup')">Clear Form</button>
+          <button class="btn btn-outline" onclick="showPage('dashboard')">← Back</button>
+        </div>
+        <div id="alertSup" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+    <!-- ── MTI CALIBRATION ── -->
+    <div id="page-formMTI" class="page hidden">
+      <div class="pageTitle">MTI Calibration and Tracking Form — Appendix IX</div>
+      <div class="pageSubtitle">Formula: MTI_adj = (MTBF × 0.85) × (1/LWI) where RCF = 0.85 (tropical)</div>
+      <div class="formWrap" style="max-width:900px">
+        <div class="formSection">
+          <h3>Calibration Details</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+            <div class="fGroup"><label>Calibrated by <span class="required">*</span></label><input type="text" id="mti_calibBy"></div>
+            <div class="fGroup"><label>Date <span class="required">*</span></label><input type="date" id="mti_date"></div>
+            <div class="fGroup"><label>Reviewed by</label><input type="text" id="mti_reviewBy"></div>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>MTI Data Per Site</h3>
+          <div class="tableWrap">
+          <table class="dataTable">
+            <thead><tr>
+              <th>Site</th><th>Avg DG Run-Hrs/Mo</th><th>MTBF Est. (hrs)</th>
+              <th>RCF</th><th>MTI_base (hrs)</th><th>Load Factor (%)</th>
+              <th>LWI</th><th>MTI_adj (hrs)</th>
+            </tr></thead>
+            <tbody id="mti_tbody"></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="btnRow">
+          <button class="btn btn-green" onclick="submitForm('MTI')">Submit Calibration</button>
+          <button class="btn btn-gray" onclick="clearForm('MTI')">Clear Form</button>
+          <button class="btn btn-outline" onclick="showPage('dashboard')">← Back</button>
+        </div>
+        <div id="alertMTI" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+    <!-- ── MODEL VALIDATION ── -->
+    <div id="page-formVal" class="page hidden">
+      <div class="pageTitle">Model Validation Tracking Form — Appendix X</div>
+      <div class="pageSubtitle">Data source: NMS Jan–Mar 2026 (post-intervention) vs Oct–Dec 2025 baseline</div>
+      <div class="formWrap" style="max-width:960px">
+        <div class="formSection">
+          <h3>Validation Criteria</h3>
+          <div class="alert alert-info">Success: (i) Paired t-test p &lt; 0.05 &nbsp;|&nbsp; (ii) Expert Likert mean ≥ 4.0 &nbsp;|&nbsp; (iii) Observed TMC reduction ≥ 25%</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="fGroup"><label>Aggregate t-statistic</label><input type="number" step="0.001" id="val_t" placeholder="e.g. 2.341"></div>
+            <div class="fGroup"><label>p-value (df=20)</label><input type="number" step="0.001" id="val_p" placeholder="e.g. 0.030"></div>
+            <div class="fGroup"><label>Expert Likert mean (Questionnaire C)</label><input type="number" step="0.01" id="val_likert" placeholder="e.g. 4.1"></div>
+            <div class="fGroup"><label>Observed TMC reduction (%)</label><input type="number" step="0.1" id="val_tmcReduction" placeholder="e.g. 27.5"></div>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Validation Data Per Site</h3>
+          <div class="tableWrap">
+          <table class="dataTable">
+            <thead><tr>
+              <th>Site</th><th>Predicted MTI_adj (hrs)</th><th>Observed Interval (hrs)</th>
+              <th>Difference (hrs)</th><th>TMC Before (TZS/qtr)</th><th>TMC After (TZS/qtr)</th><th>Pass/Fail</th>
+            </tr></thead>
+            <tbody id="val_tbody"></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="formSection">
+          <h3>Overall Validation Outcome</h3>
+          <div class="fGroup">
+            <label>Overall result:</label>
+            <div class="checkboxGroup mt8">
+              <label><input type="radio" name="val_result" value="PASSED"> ✅ PASSED</label>
+              <label><input type="radio" name="val_result" value="FAILED"> ❌ FAILED</label>
+            </div>
+          </div>
+          <div class="fGroup"><label>Action / notes if failed:</label><textarea id="val_action" rows="2"></textarea></div>
+        </div>
+        <div class="btnRow">
+          <button class="btn btn-green" onclick="submitForm('Val')">Submit Validation</button>
+          <button class="btn btn-gray" onclick="clearForm('Val')">Clear Form</button>
+          <button class="btn btn-outline" onclick="showPage('dashboard')">← Back</button>
+        </div>
+        <div id="alertVal" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+    <!-- ── ANALYSIS ── -->
+    <div id="page-analysis" class="page hidden">
+      <div class="pageTitle">Analysis Dashboard</div>
+      <div class="pageSubtitle">Summary statistics and visualizations across all collected data</div>
+      <div class="tabBar" id="analysisTabs"></div>
+      <div id="analysisContent"></div>
+    </div>
+
+    <!-- ── ADMIN PANEL ── -->
+    <div id="page-admin" class="page hidden">
+      <div class="pageTitle">Admin Panel</div>
+      <div class="pageSubtitle">Manage sites, users, and data exports</div>
+      <div class="adminGrid">
+        <div class="card">
+          <h3 style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:14px">NICTBB Site Management</h3>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <input type="text" id="newSiteInput" placeholder="New site name (e.g. MPANDA NICTBB)" style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px">
+            <button class="btn btn-blue" onclick="addSite()">Add</button>
+          </div>
+          <ul class="siteList" id="adminSiteList"></ul>
+          <p style="font-size:11px;color:#aaa;margin-top:8px">* Default 21 sites cannot be removed</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:14px">User Management</h3>
+          <!-- Add / Edit form -->
+          <div id="userFormWrap" style="background:#f5f7fa;border-radius:8px;padding:14px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:#2e6da4;margin-bottom:10px" id="userFormTitle">Add New User</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div class="fGroup" style="margin:0">
+                <label style="font-size:11px;font-weight:600;color:#444;display:block;margin-bottom:3px">Full Name <span class="required">*</span></label>
+                <input type="text" id="uf_name" placeholder="e.g. John Mwamba">
+              </div>
+              <div class="fGroup" style="margin:0">
+                <label style="font-size:11px;font-weight:600;color:#444;display:block;margin-bottom:3px">User ID <span class="required">*</span></label>
+                <input type="text" id="uf_id" placeholder="e.g. sup02" autocomplete="off">
+              </div>
+              <div class="fGroup" style="margin:0">
+                <label style="font-size:11px;font-weight:600;color:#444;display:block;margin-bottom:3px">Password <span class="required">*</span></label>
+                <input type="text" id="uf_pass" placeholder="Set a password" autocomplete="off">
+              </div>
+              <div class="fGroup" style="margin:0">
+                <label style="font-size:11px;font-weight:600;color:#444;display:block;margin-bottom:3px">Role <span class="required">*</span></label>
+                <select id="uf_role">
+                  <option value="">— Select role —</option>
+                  <option>Regional Supervisor</option>
+                  <option>Maintenance Technician</option>
+                  <option>NOC Engineer</option>
+                  <option>Power Systems Engineer</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+              <button class="btn btn-blue" style="padding:7px 16px;font-size:12px" onclick="saveUser()">Save User</button>
+              <button class="btn btn-gray" style="padding:7px 16px;font-size:12px" onclick="cancelUserEdit()">Cancel</button>
+              <span id="userFormMsg" style="font-size:12px;color:#c0392b"></span>
+            </div>
+          </div>
+          <!-- User list table -->
+          <div class="tableWrap">
+          <table class="userTable">
+            <thead><tr><th>User ID</th><th>Full Name</th><th>Role</th><th>Password</th><th>Actions</th></tr></thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+          </div>
+          <p style="font-size:11px;color:#aaa;margin-top:8px">* The admin account cannot be edited or removed here.</p>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:14px">Data Export</h3>
+        <div class="btnRow">
+          <button class="btn btn-blue" onclick="exportCSV('A')">Export Questionnaire A CSV</button>
+          <button class="btn btn-blue" onclick="exportCSV('B')">Export Questionnaire B CSV</button>
+          <button class="btn btn-blue" onclick="exportCSV('C')">Export Questionnaire C CSV</button>
+          <button class="btn btn-blue" onclick="exportCSV('Obs')">Export Observation CSV</button>
+          <button class="btn btn-blue" onclick="exportCSV('Sup')">Export Supervisor CSV</button>
+          <button class="btn btn-blue" onclick="exportCSV('MTI')">Export MTI Calibration CSV</button>
+          <button class="btn btn-blue" onclick="exportCSV('Val')">Export Validation CSV</button>
+          <button class="btn btn-green" onclick="exportAllCSV()">Export All Data (ZIP-friendly)</button>
+        </div>
+        <hr>
+        <h3 style="font-size:14px;font-weight:700;color:#c0392b;margin-bottom:10px;margin-top:4px">Danger Zone</h3>
+        <div class="btnRow">
+          <button class="btn btn-red" onclick="clearAllData()">Clear All Response Data</button>
+        </div>
+      </div>
+      <!-- Google Sheets Integration -->
+      <div class="card">
+        <h3 style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:10px">Google Sheets Integration</h3>
+        <div class="alert alert-info">To send responses directly to Google Sheets, paste your Google Apps Script Web App URL below. Deploy the script from Google Apps Script (Extensions → Apps Script → Deploy → Web App) with access set to "Anyone".</div>
+        <div class="fGroup">
+          <label>Google Apps Script Web App URL</label>
+          <input type="url" id="sheetsURL" placeholder="https://script.google.com/macros/s/…/exec" style="padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:100%">
+        </div>
+        <div class="btnRow">
+          <button class="btn btn-blue" onclick="saveSheetsURL()">Save URL</button>
+          <button class="btn btn-green" onclick="syncToSheets()">Sync All Data to Sheets Now</button>
+        </div>
+        <div id="sheetsAlert" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA & CONFIG
+// ═══════════════════════════════════════════════════════════════
+// ── User store (localStorage-backed, admin account always fixed) ──
+const ADMIN_USER = {id:'admin', pass:'pmf2026admin', name:'Conrad Katakweba (Admin)', role:'Administrator', level:'admin'};
+const DEFAULT_USERS = [
+  {id:'sup01',  pass:'sup2026',  name:'Regional Supervisor',   role:'Regional Supervisor',  level:'user'},
+  {id:'tech01', pass:'tech2026', name:'Maintenance Technician',role:'Maintenance Technician',level:'user'},
+  {id:'noc01',  pass:'noc2026',  name:'NOC Engineer',          role:'NOC Engineer',          level:'user'},
+  {id:'eng01',  pass:'eng2026',  name:'Power Systems Engineer', role:'Power Systems Engineer',level:'user'},
+];
+function getUsers(){
+  const stored=localStorage.getItem('pmfUsers');
+  return stored ? JSON.parse(stored) : [...DEFAULT_USERS];
+}
+function saveUsers(arr){localStorage.setItem('pmfUsers',JSON.stringify(arr));}
+function getAllUsers(){return [ADMIN_USER,...getUsers()];}
+
+const DEFAULT_SITES = [
+  'HULIA NICTBB','NAMTUMBO NICTBB','WINO NICTBB','RUNGWA NICTBB','KIYOMBO NICTBB',
+  'MALONGWE NICTBB','BUKENE NICTBB','MABUKI NICTBB','NASSA NICTBB','KASUMULO NICTBB',
+  'MAKONGOLOSI NICTBB','MICHIGA NICTBB','MITOLE NICTBB','TANDAHIMBA NICTBB','MANGA NICTBB',
+  'MKATA NICTBB','MIANGALUA NICTBB','KIMANZICHANA NICTBB','BUHIGWE NICTBB','UVINZA NICTBB','KIZI NICTBB'
+];
+
+const QA_ITEMS = [
+  {cat:'TECHNICAL FACTORS',items:[
+    'Generator age and technology level (older units need more frequent servicing)',
+    'Fuel efficiency / combustion quality (injector and compression condition)',
+    'Spare parts availability and cost at or near your site',
+    'Frequency of breakdowns and known failure modes',
+  ]},
+  {cat:'OPERATIONAL FACTORS',items:[
+    'Operator skill and training for generator maintenance',
+    'Scheduling discipline — planned vs ad-hoc maintenance',
+    'Generator load factor — underloading (<30% KVA) or overloading',
+    'Monthly generator start frequency and runtime hours',
+  ]},
+  {cat:'ENVIRONMENTAL FACTORS',items:[
+    'Tropical temperature and humidity accelerating component wear',
+    'Site accessibility and distance from maintenance depot',
+    'Grid reliability — frequency and duration of power outages',
+  ]},
+  {cat:'COMPANY POLICY FACTORS',items:[
+    'Budget allocation for maintenance activities',
+    'Procurement policy — OEM parts vs lower-cost aftermarket substitutes',
+    'Battery-first dispatch adoption reducing generator run-hours',
+  ]},
+];
+
+const QB_ITEMS = [
+  'A run-hour-based interval is more appropriate than a 3-month calendar standard',
+  'A 15% tropical reduction (RCF = 0.85) is reasonable for Tanzania conditions',
+  'Generator load factor should influence maintenance scheduling',
+  'Near-zero run-hour sites should have intervals extended beyond 3 months',
+  'High-utilization sites (>100 hrs/month) need more frequent service than 3-month calendar',
+  'NMS run-hour data is accurate enough to replace calendar scheduling',
+];
+
+const QB_COSTS = [
+  {id:'c_trip',    label:'C_trip — Vehicle hire, fuel, accommodation per visit (TZS)'},
+  {id:'c_oil',     label:'C_oil — Engine oil replacement (TZS)'},
+  {id:'c_filters', label:'C_filters — Oil + air + fuel filters (TZS)'},
+  {id:'c_parts',   label:'C_parts — Other consumables: belts, coolant, starting battery (TZS)'},
+  {id:'c_labour',  label:'C_labour — Technician labour per day (TZS)'},
+  {id:'c_breakdown',label:'C_breakdown — Emergency call-out total (TZS)'},
+];
+
+const QC_ITEMS = [
+  {cat:'Battery-First Dispatch', items:[
+    'Battery-first dispatch would measurably reduce DG run-hours and maintenance frequency',
+    'Switching to battery-first is technically feasible at all 21 NICTBB sites without new hardware',
+  ]},
+  {cat:'PMF-MCR Framework Overall', items:[
+    'The PMF-MCR framework addresses a genuine and measurable cost problem at NICTBB sites',
+    'The framework is practical and implementable with TTCL\'s current resources',
+    'PMF-MCR would deliver 25% or more total maintenance cost reduction if implemented',
+    'I would recommend PMF-MCR as TTCL\'s standard NICTBB generator maintenance protocol',
+    'The framework is replicable for other East African telecom operators',
+    'The PDCA continuous improvement cycle is important for long-term cost reduction',
+    'NMS evidence justifies revising the 250-hr/3-month calendar standard',
+  ]},
+];
+
+const OBS_ITEMS = [
+  {item:'Generator visual condition',     statusOpts:['Good','Fair','Poor'],          reading:false},
+  {item:'Oil level and colour',           statusOpts:['Full/Clean','Low','Dirty'],     reading:false},
+  {item:'Coolant level',                  statusOpts:['Full','Low','Empty'],           reading:false},
+  {item:'Air filter condition',           statusOpts:['Clean','Serviceable','Replace'],reading:false},
+  {item:'Fuel filter condition',          statusOpts:['New','Serviceable','Overdue'],  reading:false},
+  {item:'Run-hour meter reading',         statusOpts:['Functional','Not working'],     reading:'hrs'},
+  {item:'ATS dispatch configuration',     statusOpts:['Battery-first','Gen-first','Manual'], reading:false},
+  {item:'Last maintenance date (logbook)',statusOpts:[],                               reading:'date'},
+  {item:'Battery condition and SoC',      statusOpts:['Good','Fair','Poor'],           reading:'%'},
+  {item:'NMS connectivity',               statusOpts:['Active','Intermittent','Offline'],reading:false},
+  {item:'Ambient temperature',            statusOpts:[],                               reading:'°C'},
+  {item:'Site category (PMF-MCR)',        statusOpts:['A – Low use','B – Moderate','C – High use'], reading:false},
+];
+
+// ── Storage helpers ──
+function getSites(){
+  const extra = JSON.parse(localStorage.getItem('pmfSites')||'[]');
+  return [...DEFAULT_SITES,...extra];
+}
+function saveSite(name){
+  const extra = JSON.parse(localStorage.getItem('pmfSites')||'[]');
+  if(!extra.includes(name)&&!DEFAULT_SITES.includes(name)){extra.push(name);localStorage.setItem('pmfSites',JSON.stringify(extra));}
+}
+function removeSite(name){
+  const extra = JSON.parse(localStorage.getItem('pmfSites')||'[]');
+  localStorage.setItem('pmfSites',JSON.stringify(extra.filter(s=>s!==name)));
+}
+function getResponses(form){return JSON.parse(localStorage.getItem('pmfResp_'+form)||'[]');}
+function saveResponse(form,obj){
+  const arr=getResponses(form);arr.push({...obj,_ts:new Date().toISOString(),_user:currentUser.id});
+  localStorage.setItem('pmfResp_'+form,JSON.stringify(arr));
+}
+
+let currentUser=null;
+let activeAnalysisTab='A';
+let charts={};
+
+// ═══════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════
+function doLogin(){
+  const u=document.getElementById('loginUser').value.trim();
+  const p=document.getElementById('loginPass').value;
+  const user=getAllUsers().find(x=>x.id===u&&x.pass===p);
+  if(!user){document.getElementById('loginError').style.display='block';return;}
+  currentUser=user;
+  document.getElementById('loginPage').style.display='none';
+  document.getElementById('app').style.display='grid';
+  document.getElementById('welcomeMsg').textContent=user.name+' ('+user.role+')';
+  document.querySelectorAll('.admin-only').forEach(el=>el.style.display=user.level==='admin'?'':'none');
+  buildForms();
+  showPage('dashboard');
+}
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('loginUser').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+function doLogout(){currentUser=null;document.getElementById('loginPage').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('loginUser').value='';document.getElementById('loginPass').value='';document.getElementById('loginError').style.display='none';}
+
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+  document.querySelectorAll('.navItem').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.remove('hidden');
+  const nav=document.getElementById('nav-'+id);
+  if(nav)nav.classList.add('active');
+  if(id==='dashboard')renderDashboard();
+  if(id==='admin')renderAdmin();
+  if(id==='analysis')renderAnalysis();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD FORMS
+// ═══════════════════════════════════════════════════════════════
+function buildForms(){
+  buildLikertTable('qA_tbody',QA_ITEMS,true,'qA_');
+  buildLikertTable('qB_tbody',QB_ITEMS.map(s=>({cat:null,items:[s]})),false,'qB_');
+  buildLikertTable('qC_tbody',QC_ITEMS,true,'qC_');
+  buildCostFields();
+  buildObsTable();
+  buildSiteDropdowns();
+  buildSupTable();
+  buildMTITable();
+  buildValTable();
+}
+
+function buildLikertTable(tbodyId,groups,hasCats,prefix){
+  const tb=document.getElementById(tbodyId);tb.innerHTML='';
+  let qNum=1;
+  groups.forEach(g=>{
+    if(hasCats&&g.cat){
+      const cr=tb.insertRow();cr.className='catRow';
+      const td=cr.insertCell();td.colSpan=6;td.textContent=g.cat;
+    }
+    (g.items||[g]).forEach(item=>{
+      const text=typeof item==='string'?item:item;
+      const tr=tb.insertRow();
+      const td0=tr.insertCell();td0.textContent=qNum+'. '+text;
+      for(let v=1;v<=5;v++){
+        const td=tr.insertCell();
+        const inp=document.createElement('input');
+        inp.type='radio';inp.name=prefix+'q'+qNum;inp.value=v;
+        td.appendChild(inp);
+      }
+      qNum++;
+    });
+  });
+}
+
+function buildCostFields(){
+  const wrap=document.getElementById('qB_costs');wrap.innerHTML='';
+  QB_COSTS.forEach(c=>{
+    wrap.innerHTML+=`<div class="fGroup"><label>${c.label}</label><input type="number" id="qB_${c.id}" min="0" placeholder="TZS"></div>`;
+  });
+}
+
+function buildObsTable(){
+  const tb=document.getElementById('obs_tbody');tb.innerHTML='';
+  OBS_ITEMS.forEach((item,i)=>{
+    const tr=tb.insertRow();
+    tr.insertCell().textContent=i+1;
+    tr.insertCell().textContent=item.item;
+    const tdS=tr.insertCell();
+    if(item.statusOpts.length>0){
+      const sel=document.createElement('select');sel.id='obs_status_'+i;
+      sel.innerHTML='<option value="">—</option>'+item.statusOpts.map(o=>`<option>${o}</option>`).join('');
+      tdS.appendChild(sel);
+    }else{tdS.textContent='N/A';}
+    const tdR=tr.insertCell();
+    if(item.reading){
+      const inp=document.createElement('input');inp.type='text';inp.id='obs_reading_'+i;inp.placeholder=item.reading;
+      tdR.appendChild(inp);
+    }else{tdR.textContent='—';}
+    const tdA=tr.insertCell();
+    const inp2=document.createElement('input');inp2.type='text';inp2.id='obs_action_'+i;inp2.placeholder='Action…';
+    tdA.appendChild(inp2);
+  });
+}
+
+function buildSiteDropdowns(){
+  const sites=getSites();
+  ['qA_siteSelect','obs_siteSelect'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    sel.innerHTML='<option value="">— Select site —</option>'+sites.map(s=>`<option>${s}</option>`).join('');
+  });
+}
+
+function syncSiteSelect(prefix){
+  const sel=document.getElementById(prefix+'_siteSelect');
+  const txt=document.getElementById(prefix+'_siteText');
+  if(sel&&txt)txt.value=sel.value;
+}
+
+function getSiteVal(prefix){
+  const txt=document.getElementById(prefix+'_siteText');
+  const sel=document.getElementById(prefix+'_siteSelect');
+  return (txt&&txt.value.trim())||(sel&&sel.value)||'';
+}
+
+function buildSupTable(){
+  const tb=document.getElementById('sup_tbody');tb.innerHTML='';
+  getSites().forEach(site=>{
+    const tr=tb.insertRow();
+    const td0=tr.insertCell();td0.textContent=site;td0.style.fontWeight='600';
+    ['dist','tripCost','schVis','corrVis','emerg','remarks'].forEach((f,i)=>{
+      const td=tr.insertCell();
+      const inp=document.createElement('input');
+      inp.type=i<5?'number':'text';inp.dataset.site=site;inp.dataset.field=f;
+      inp.className='sup_field';inp.placeholder=i<5?'0':'';
+      td.appendChild(inp);
+    });
+  });
+}
+
+function buildMTITable(){
+  const tb=document.getElementById('mti_tbody');tb.innerHTML='';
+  getSites().forEach(site=>{
+    const tr=tb.insertRow();
+    const td0=tr.insertCell();td0.textContent=site;td0.style.fontWeight='600';
+    // avgRun, mtbf, rcf(fixed), mtiBase, loadFactor, lwi, mtiAdj
+    const fields=['avgRun','mtbf','mtiBase','loadFactor','lwi','mtiAdj'];
+    // rcf column (fixed 0.85)
+    const rcfTd=document.createElement('td');
+    fields.forEach((f,i)=>{
+      const td=tr.insertCell();
+      if(i===1){// insert RCF fixed after mtbf
+        const rcfCell=tr.insertCell();rcfCell.textContent='0.85';rcfCell.style.textAlign='center';rcfCell.style.color='#888';
+      }
+      const inp=document.createElement('input');inp.type='number';inp.step='0.01';
+      inp.dataset.site=site;inp.dataset.field=f;inp.className='mti_field';
+      td.appendChild(inp);
+    });
+    // remove extra cell inserted
+  });
+  // rebuild cleanly
+  tb.innerHTML='';
+  getSites().forEach(site=>{
+    const tr=tb.insertRow();
+    tr.insertCell().textContent=site;
+    ['avgRun','mtbf'].forEach(f=>{const td=tr.insertCell();const i=document.createElement('input');i.type='number';i.step='0.1';i.dataset.site=site;i.dataset.field=f;i.className='mti_field';td.appendChild(i);});
+    const rcfTd=tr.insertCell();rcfTd.textContent='0.85';rcfTd.style.textAlign='center';rcfTd.style.color='#777';
+    ['mtiBase','loadFactor','lwi','mtiAdj'].forEach(f=>{const td=tr.insertCell();const i=document.createElement('input');i.type='number';i.step='0.01';i.dataset.site=site;i.dataset.field=f;i.className='mti_field';td.appendChild(i);});
+  });
+}
+
+function buildValTable(){
+  const tb=document.getElementById('val_tbody');tb.innerHTML='';
+  getSites().forEach(site=>{
+    const tr=tb.insertRow();
+    tr.insertCell().textContent=site;
+    ['predicted','observed','difference','tmcBefore','tmcAfter'].forEach(f=>{
+      const td=tr.insertCell();
+      const inp=document.createElement('input');inp.type='number';inp.step='0.1';
+      inp.dataset.site=site;inp.dataset.field=f;inp.className='val_field';td.appendChild(inp);
+    });
+    const tdPF=tr.insertCell();
+    const sel=document.createElement('select');sel.dataset.site=site;sel.dataset.field='passFail';sel.className='val_field';
+    sel.innerHTML='<option value="">—</option><option value="Pass">Pass</option><option value="Fail">Fail</option>';
+    tdPF.appendChild(sel);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUBMIT FORMS
+// ═══════════════════════════════════════════════════════════════
+function getLikertValues(prefix,totalQ){
+  const vals={};
+  for(let q=1;q<=totalQ;q++){
+    const checked=document.querySelector(`input[name="${prefix}q${q}"]:checked`);
+    vals['q'+q]=checked?parseInt(checked.value):null;
+  }
+  return vals;
+}
+
+function submitForm(form){
+  let data={};let valid=true;let msg='';
+  const alertEl=document.getElementById('alert'+form);
+
+  if(form==='A'){
+    const role=document.getElementById('qA_role').value;
+    const years=document.getElementById('qA_years').value;
+    const site=getSiteVal('qA');
+    if(!role||!years||!site){valid=false;msg='Please fill in Role, Years, and Site Name.';}
+    const qVals=getLikertValues('qA_',14);
+    const missing=Object.entries(qVals).filter(([k,v])=>v===null).length;
+    if(missing>0){valid=false;msg='Please rate all '+missing+' remaining factor(s).';}
+    data={role,years,region:document.getElementById('qA_region').value,site,...qVals,
+      q15:document.getElementById('qA_q15').value,
+      q16:(document.querySelector('input[name="qA_q16"]:checked')||{}).value||'',
+      q16reason:document.getElementById('qA_q16reason').value};
+  }
+  else if(form==='B'){
+    const role=document.getElementById('qB_role').value;
+    if(!role){valid=false;msg='Please select a role.';}
+    const qVals=getLikertValues('qB_',6);
+    data={role,years:document.getElementById('qB_years').value,...qVals,
+      c_trip:document.getElementById('qB_c_trip').value,
+      c_oil:document.getElementById('qB_c_oil').value,
+      c_filters:document.getElementById('qB_c_filters').value,
+      c_parts:document.getElementById('qB_c_parts').value,
+      c_labour:document.getElementById('qB_c_labour').value,
+      c_breakdown:document.getElementById('qB_c_breakdown').value,
+      reduction:document.getElementById('qB_reduction').value,
+      limitation:document.getElementById('qB_limitation').value};
+  }
+  else if(form==='C'){
+    const role=document.getElementById('qC_role').value;
+    if(!role){valid=false;msg='Please select a role.';}
+    const qVals=getLikertValues('qC_',9);
+    data={role,years:document.getElementById('qC_years').value,...qVals,
+      barrier:(document.querySelector('input[name="qC_barrier"]:checked')||{}).value||'',
+      reduction:document.getElementById('qC_reduction').value,
+      suggestions:document.getElementById('qC_suggestions').value};
+  }
+  else if(form==='Obs'){
+    const site=getSiteVal('obs');
+    const observer=document.getElementById('obs_observer').value.trim();
+    const date=document.getElementById('obs_date').value;
+    if(!site||!observer||!date){valid=false;msg='Please fill in Site, Observer Name, and Date.';}
+    const obsData={};
+    OBS_ITEMS.forEach((item,i)=>{
+      const ssel=document.getElementById('obs_status_'+i);
+      const rinp=document.getElementById('obs_reading_'+i);
+      const ainp=document.getElementById('obs_action_'+i);
+      obsData['item_'+i]={status:ssel?ssel.value:'',reading:rinp?rinp.value:'',action:ainp?ainp.value:''};
+    });
+    data={site,region:document.getElementById('obs_region').value,observer,date,notes:document.getElementById('obs_notes').value,...obsData};
+  }
+  else if(form==='Sup'){
+    const name=document.getElementById('sup_name').value.trim();
+    const region=document.getElementById('sup_region').value.trim();
+    if(!name||!region){valid=false;msg='Please enter Supervisor Name and Region.';}
+    const siteData={};
+    document.querySelectorAll('.sup_field').forEach(inp=>{
+      const s=inp.dataset.site,f=inp.dataset.field;
+      if(!siteData[s])siteData[s]={};
+      siteData[s][f]=inp.value;
+    });
+    data={name,region,date:document.getElementById('sup_date').value,siteData,constraint:document.getElementById('sup_constraint').value};
+  }
+  else if(form==='MTI'){
+    const calibBy=document.getElementById('mti_calibBy').value.trim();
+    if(!calibBy){valid=false;msg='Please enter the calibrator name.';}
+    const siteData={};
+    document.querySelectorAll('.mti_field').forEach(inp=>{
+      const s=inp.dataset.site,f=inp.dataset.field;
+      if(!siteData[s])siteData[s]={};
+      siteData[s][f]=inp.value;
+    });
+    data={calibBy,date:document.getElementById('mti_date').value,reviewBy:document.getElementById('mti_reviewBy').value,siteData};
+  }
+  else if(form==='Val'){
+    const siteData={};
+    document.querySelectorAll('.val_field').forEach(inp=>{
+      const s=inp.dataset.site,f=inp.dataset.field;
+      if(!siteData[s])siteData[s]={};
+      siteData[s][f]=inp.type==='select-one'?inp.value:inp.value;
+    });
+    data={t:document.getElementById('val_t').value,p:document.getElementById('val_p').value,
+      likert:document.getElementById('val_likert').value,tmcReduction:document.getElementById('val_tmcReduction').value,
+      result:(document.querySelector('input[name="val_result"]:checked')||{}).value||'',
+      action:document.getElementById('val_action').value,siteData};
+  }
+
+  if(!valid){alertEl.innerHTML=`<div class="alert alert-error">${msg}</div>`;return;}
+  saveResponse(form,data);
+  sendToSheets(form,data);
+  alertEl.innerHTML=`<div class="alert alert-success">✅ Response submitted successfully! You may fill another response or navigate away.</div>`;
+  setTimeout(()=>{alertEl.innerHTML='';},5000);
+}
+
+function clearForm(form){
+  const ids={'A':['qA_role','qA_years','qA_region','qA_siteText','qA_q15','qA_q16reason'],
+    'B':['qB_role','qB_years','qB_reduction','qB_limitation'],
+    'C':['qC_role','qC_years','qC_reduction','qC_suggestions'],
+    'Obs':['obs_region','obs_observer','obs_date','obs_notes'],
+    'Sup':['sup_name','sup_region','sup_date','sup_constraint'],
+    'MTI':['mti_calibBy','mti_date','mti_reviewBy'],
+    'Val':['val_t','val_p','val_likert','val_tmcReduction','val_action']};
+  (ids[form]||[]).forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.querySelectorAll(`input[type=radio]`).forEach(r=>{if(r.name.startsWith('q'+form.toLowerCase())||r.name.startsWith('qA')||r.name.startsWith('qB')||r.name.startsWith('qC')||r.name.startsWith('val_'))r.checked=false;});
+  document.querySelectorAll('.sup_field,.mti_field,.val_field,.obs_status_,.obs_reading_,.obs_action_').forEach(el=>el.value='');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+const FORM_META=[
+  {key:'A',title:'Questionnaire A — SO1',desc:'Factors affecting generator maintenance costs',page:'formA',color:'#2e6da4'},
+  {key:'B',title:'Questionnaire B — SO2/SO3',desc:'MTI model calibration and cost component validation',page:'formB',color:'#27ae60'},
+  {key:'C',title:'Questionnaire C — SO4',desc:'PMF-MCR framework validation by experts',page:'formC',color:'#8e44ad'},
+  {key:'Obs',title:'Site Observation Checklist',desc:'Appendix VII — physical site visit assessment',page:'formObs',color:'#e67e22'},
+  {key:'Sup',title:'Regional Supervisor Form',desc:'Appendix VIII — trip costs and visit data',page:'formSup',color:'#e74c3c'},
+  {key:'MTI',title:'MTI Calibration Form',desc:'Appendix IX — MTI_adj calculation per site',page:'formMTI',color:'#16a085'},
+  {key:'Val',title:'Model Validation Form',desc:'Appendix X — predicted vs observed tracking',page:'formVal',color:'#c0392b'},
+];
+
+function renderDashboard(){
+  const stats=document.getElementById('dashStats');
+  const total=FORM_META.reduce((s,f)=>s+getResponses(f.key).length,0);
+  stats.innerHTML=`
+    <div class="statBox"><div class="val">${total}</div><div class="lbl">Total Responses</div></div>
+    ${FORM_META.map(f=>`<div class="statBox"><div class="val" style="color:${f.color}">${getResponses(f.key).length}</div><div class="lbl">${f.title.split('—')[0].trim()}</div></div>`).join('')}
+    <div class="statBox"><div class="val">${getSites().length}</div><div class="lbl">NICTBB Sites</div></div>
+  `;
+  const cards=document.getElementById('formCards');
+  cards.innerHTML=FORM_META.map(f=>`
+    <div class="formCard" onclick="showPage('${f.page}')" style="border-top-color:${f.color}">
+      <h3>${f.title}</h3>
+      <p>${f.desc}</p>
+      <span class="badge">${getResponses(f.key).length} response${getResponses(f.key).length===1?'':'s'}</span>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ANALYSIS
+// ═══════════════════════════════════════════════════════════════
+function renderAnalysis(){
+  const tabs=document.getElementById('analysisTabs');
+  tabs.innerHTML=FORM_META.map(f=>`<button class="tabBtn ${activeAnalysisTab===f.key?'active':''}" onclick="switchAnalysisTab('${f.key}')">${f.title.split('—')[0].trim()} (${getResponses(f.key).length})</button>`).join('');
+  renderAnalysisContent(activeAnalysisTab);
+}
+
+function switchAnalysisTab(key){activeAnalysisTab=key;renderAnalysis();}
+
+function avg(arr){if(!arr.length)return 0;return arr.reduce((a,b)=>a+b,0)/arr.length;}
+
+function renderAnalysisContent(key){
+  const content=document.getElementById('analysisContent');
+  const resp=getResponses(key);
+  if(!resp.length){content.innerHTML=`<div class="noData">No responses yet for this form.</div>`;return;}
+
+  if(key==='A'){
+    const allItems=QA_ITEMS.flatMap(g=>g.items);
+    const means=allItems.map((_,i)=>avg(resp.map(r=>r['q'+(i+1)]).filter(v=>v)));
+    const roleCount={};resp.forEach(r=>{roleCount[r.role]=(roleCount[r.role]||0)+1;});
+    const q16={Yes:0,No:0,Unsure:0};resp.forEach(r=>{if(r.q16)q16[r.q16]++;});
+    content.innerHTML=`
+      <div class="statsGrid">
+        <div class="statBox"><div class="val">${resp.length}</div><div class="lbl">Responses</div></div>
+        <div class="statBox"><div class="val" style="font-size:20px">${avg(means).toFixed(2)}</div><div class="lbl">Overall Mean Score</div></div>
+        <div class="statBox"><div class="val" style="font-size:20px">${allItems[means.indexOf(Math.max(...means))]?.substring(0,20)||'—'}…</div><div class="lbl">Top Factor</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="chartWrap"><h3>Factor Mean Scores (Q1–Q14)</h3><canvas id="chartA_means"></canvas></div>
+        <div class="chartWrap"><h3>Respondent Roles</h3><canvas id="chartA_roles"></canvas></div>
+      </div>
+      <div class="chartWrap"><h3>Q16: Is 3-month calendar appropriate?</h3><canvas id="chartA_q16" style="max-height:200px"></canvas></div>
+    `;
+    newChart('chartA_means','bar',
+      allItems.map((s,i)=>'Q'+(i+1)+': '+s.substring(0,30)+'…'),
+      [{label:'Mean Score',data:means,backgroundColor:'#2e6da4'}],
+      {scales:{y:{min:0,max:5,title:{display:true,text:'Mean (1–5)'}}}});
+    newChart('chartA_roles','doughnut',Object.keys(roleCount),
+      [{data:Object.values(roleCount),backgroundColor:['#2e6da4','#27ae60','#e67e22','#8e44ad']}]);
+    newChart('chartA_q16','bar',Object.keys(q16),
+      [{label:'Count',data:Object.values(q16),backgroundColor:['#27ae60','#e74c3c','#f39c12']}]);
+  }
+  else if(key==='B'){
+    const means=QB_ITEMS.map((_,i)=>avg(resp.map(r=>r['q'+(i+1)]).filter(v=>v)));
+    const costKeys=['c_trip','c_oil','c_filters','c_parts','c_labour','c_breakdown'];
+    const costMeans=costKeys.map(k=>avg(resp.map(r=>parseFloat(r[k])||0).filter(v=>v>0)));
+    content.innerHTML=`
+      <div class="statsGrid">
+        <div class="statBox"><div class="val">${resp.length}</div><div class="lbl">Responses</div></div>
+        <div class="statBox"><div class="val" style="font-size:20px">${avg(means).toFixed(2)}</div><div class="lbl">MTI Model Mean Score</div></div>
+        <div class="statBox"><div class="val" style="font-size:18px">${avg(resp.map(r=>parseFloat(r.reduction)||0).filter(v=>v>0)).toFixed(1)}%</div><div class="lbl">Avg Expected Reduction</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="chartWrap"><h3>MTI Model Validation Scores (Q1–Q6)</h3><canvas id="chartB_means"></canvas></div>
+        <div class="chartWrap"><h3>Mean Cost Components (TZS)</h3><canvas id="chartB_costs"></canvas></div>
+      </div>
+    `;
+    newChart('chartB_means','bar',QB_ITEMS.map((s,i)=>'Q'+(i+1)+': '+s.substring(0,25)+'…'),
+      [{label:'Mean (1–5)',data:means,backgroundColor:'#27ae60'}],{scales:{y:{min:0,max:5}}});
+    newChart('chartB_costs','bar',['C_trip','C_oil','C_filters','C_parts','C_labour','C_breakdown'],
+      [{label:'Mean TZS',data:costMeans,backgroundColor:'#8e44ad'}]);
+  }
+  else if(key==='C'){
+    const allItems=QC_ITEMS.flatMap(g=>g.items);
+    const means=allItems.map((_,i)=>avg(resp.map(r=>r['q'+(i+1)]).filter(v=>v)));
+    const barrierCount={};resp.forEach(r=>{if(r.barrier)barrierCount[r.barrier]=(barrierCount[r.barrier]||0)+1;});
+    content.innerHTML=`
+      <div class="statsGrid">
+        <div class="statBox"><div class="val">${resp.length}</div><div class="lbl">Responses</div></div>
+        <div class="statBox"><div class="val" style="font-size:20px">${avg(means).toFixed(2)}</div><div class="lbl">Framework Mean Score</div></div>
+        <div class="statBox"><div class="val" style="font-size:18px;color:${avg(means)>=4?'#27ae60':'#e74c3c'}">${avg(means)>=4?'✅ PASS':'⚠ BELOW 4.0'}</div><div class="lbl">Target ≥ 4.0</div></div>
+        <div class="statBox"><div class="val" style="font-size:18px">${avg(resp.map(r=>parseFloat(r.reduction)||0).filter(v=>v>0)).toFixed(1)}%</div><div class="lbl">Avg Projected Reduction</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="chartWrap"><h3>Framework Validation Scores (Q1–Q9)</h3><canvas id="chartC_means"></canvas></div>
+        <div class="chartWrap"><h3>Implementation Barriers</h3><canvas id="chartC_barriers"></canvas></div>
+      </div>
+    `;
+    newChart('chartC_means','bar',allItems.map((s,i)=>'Q'+(i+1)+': '+s.substring(0,28)+'…'),
+      [{label:'Mean (1–5)',data:means,backgroundColor:'#8e44ad'}],{scales:{y:{min:0,max:5}}});
+    newChart('chartC_barriers','doughnut',Object.keys(barrierCount),
+      [{data:Object.values(barrierCount),backgroundColor:['#e74c3c','#f39c12','#27ae60','#2e6da4','#8e44ad','#95a5a6']}]);
+  }
+  else if(key==='Obs'){
+    const catCount={'A – Low use':0,'B – Moderate':0,'C – High use':0};
+    const nmsCount={'Active':0,'Intermittent':0,'Offline':0};
+    const genCond={'Good':0,'Fair':0,'Poor':0};
+    resp.forEach(r=>{
+      const cat=r['item_11']?.status;if(cat)catCount[cat]=(catCount[cat]||0)+1;
+      const nms=r['item_9']?.status;if(nms)nmsCount[nms]=(nmsCount[nms]||0)+1;
+      const gen=r['item_0']?.status;if(gen)genCond[gen]=(genCond[gen]||0)+1;
+    });
+    content.innerHTML=`
+      <div class="statsGrid">
+        <div class="statBox"><div class="val">${resp.length}</div><div class="lbl">Site Visits</div></div>
+        <div class="statBox"><div class="val">${[...new Set(resp.map(r=>r.site))].length}</div><div class="lbl">Unique Sites</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+        <div class="chartWrap"><h3>Site Category Distribution</h3><canvas id="chartObs_cat"></canvas></div>
+        <div class="chartWrap"><h3>NMS Connectivity Status</h3><canvas id="chartObs_nms"></canvas></div>
+        <div class="chartWrap"><h3>Generator Condition</h3><canvas id="chartObs_gen"></canvas></div>
+      </div>
+    `;
+    newChart('chartObs_cat','doughnut',Object.keys(catCount),[{data:Object.values(catCount),backgroundColor:['#27ae60','#f39c12','#e74c3c']}]);
+    newChart('chartObs_nms','doughnut',Object.keys(nmsCount),[{data:Object.values(nmsCount),backgroundColor:['#27ae60','#f39c12','#e74c3c']}]);
+    newChart('chartObs_gen','doughnut',Object.keys(genCond),[{data:Object.values(genCond),backgroundColor:['#27ae60','#f39c12','#e74c3c']}]);
+  }
+  else if(key==='Sup'){
+    if(!resp.length){content.innerHTML='<div class="noData">No supervisor data yet.</div>';return;}
+    const latest=resp[resp.length-1];
+    const sites=Object.keys(latest.siteData||{}).filter(s=>latest.siteData[s].tripCost);
+    const costs=sites.map(s=>parseFloat(latest.siteData[s].tripCost)||0);
+    content.innerHTML=`
+      <div class="statsGrid">
+        <div class="statBox"><div class="val">${resp.length}</div><div class="lbl">Submissions</div></div>
+        <div class="statBox"><div class="val" style="font-size:18px">${sites.length}</div><div class="lbl">Sites with Data</div></div>
+        <div class="statBox"><div class="val" style="font-size:18px">${costs.length?Math.round(avg(costs)).toLocaleString():'—'}</div><div class="lbl">Avg Trip Cost (TZS)</div></div>
+      </div>
+      <div class="chartWrap"><h3>Trip Cost per Site — Latest Submission (TZS)</h3><canvas id="chartSup_cost"></canvas></div>
+    `;
+    newChart('chartSup_cost','bar',sites,[{label:'Trip Cost (TZS)',data:costs,backgroundColor:'#e74c3c'}]);
+  }
+  else if(key==='MTI'){
+    if(!resp.length){content.innerHTML='<div class="noData">No MTI calibration data yet.</div>';return;}
+    const latest=resp[resp.length-1];
+    const sites=Object.keys(latest.siteData||{}).filter(s=>latest.siteData[s].mtiAdj);
+    const mtiAdjs=sites.map(s=>parseFloat(latest.siteData[s].mtiAdj)||0);
+    content.innerHTML=`
+      <div class="statsGrid">
+        <div class="statBox"><div class="val">${resp.length}</div><div class="lbl">Calibrations</div></div>
+        <div class="statBox"><div class="val" style="font-size:18px">${mtiAdjs.length?avg(mtiAdjs).toFixed(0):'—'} hrs</div><div class="lbl">Avg MTI_adj</div></div>
+      </div>
+      <div class="chartWrap"><h3>MTI_adj per Site vs 250hr Standard (Latest)</h3><canvas id="chartMTI_adj"></canvas></div>
+    `;
+    newChart('chartMTI_adj','bar',sites,
+      [{label:'MTI_adj (hrs)',data:mtiAdjs,backgroundColor:'#16a085'},
+       {label:'250hr Standard',data:sites.map(()=>250),type:'line',borderColor:'#e74c3c',backgroundColor:'transparent',pointRadius:0}]);
+  }
+  else if(key==='Val'){
+    if(!resp.length){content.innerHTML='<div class="noData">No validation data yet.</div>';return;}
+    const latest=resp[resp.length-1];
+    const sites=Object.keys(latest.siteData||{}).filter(s=>latest.siteData[s].predicted);
+    const predicted=sites.map(s=>parseFloat(latest.siteData[s].predicted)||0);
+    const observed=sites.map(s=>parseFloat(latest.siteData[s].observed)||0);
+    const passFail=Object.values(latest.siteData||{}).map(d=>d.passFail).filter(v=>v);
+    const passCount=passFail.filter(v=>v==='Pass').length;
+    content.innerHTML=`
+      <div class="statsGrid">
+        <div class="statBox"><div class="val">${resp.length}</div><div class="lbl">Validation Runs</div></div>
+        <div class="statBox"><div class="val" style="color:${latest.p<0.05?'#27ae60':'#e74c3c'}">${latest.p||'—'}</div><div class="lbl">p-value (target &lt;0.05)</div></div>
+        <div class="statBox"><div class="val" style="color:${parseFloat(latest.likert)>=4?'#27ae60':'#e74c3c'}">${latest.likert||'—'}</div><div class="lbl">Expert Mean (target ≥4.0)</div></div>
+        <div class="statBox"><div class="val" style="color:${parseFloat(latest.tmcReduction)>=25?'#27ae60':'#e74c3c'}">${latest.tmcReduction||'—'}%</div><div class="lbl">TMC Reduction (target ≥25%)</div></div>
+        <div class="statBox"><div class="val" style="color:${latest.result==='PASSED'?'#27ae60':'#e74c3c'}">${latest.result||'—'}</div><div class="lbl">Overall Result</div></div>
+        <div class="statBox"><div class="val">${passCount}/${passFail.length}</div><div class="lbl">Sites Passed</div></div>
+      </div>
+      <div class="chartWrap"><h3>Predicted vs Observed MTI Interval per Site</h3><canvas id="chartVal_cmp"></canvas></div>
+    `;
+    newChart('chartVal_cmp','bar',sites,
+      [{label:'Predicted MTI_adj',data:predicted,backgroundColor:'#2e6da4'},
+       {label:'Observed Interval',data:observed,backgroundColor:'#27ae60'}]);
+  }
+}
+
+function newChart(id,type,labels,datasets,opts={}){
+  if(charts[id])charts[id].destroy();
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  charts[id]=new Chart(ctx,{type,data:{labels,datasets},options:{responsive:true,plugins:{legend:{position:'bottom'}},animation:{duration:400},...opts}});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════════════════════
+function renderAdmin(){
+  // Sites
+  const ul=document.getElementById('adminSiteList');ul.innerHTML='';
+  const extra=JSON.parse(localStorage.getItem('pmfSites')||'[]');
+  getSites().forEach(site=>{
+    const li=document.createElement('li');
+    li.textContent=site;
+    if(extra.includes(site)){
+      const btn=document.createElement('button');btn.className='removeBtn';btn.textContent='✕';
+      btn.title='Remove site';btn.onclick=()=>{removeSite(site);renderAdmin();buildForms();};
+      li.appendChild(btn);
+    }
+    ul.appendChild(li);
+  });
+  // Users
+  renderUserTable();
+  // Sheets URL
+  const saved=localStorage.getItem('pmfSheetsURL')||'';
+  document.getElementById('sheetsURL').value=saved;
+}
+
+// ── USER CRUD ──────────────────────────────────────────────────
+let editingUserId = null; // null = adding new
+
+function renderUserTable(){
+  const tb=document.getElementById('userTableBody');
+  if(!tb)return;
+  tb.innerHTML='';
+  // Admin row (read-only)
+  tb.innerHTML+=`<tr style="background:#f0f5fa">
+    <td><code>admin</code></td>
+    <td>${ADMIN_USER.name}</td>
+    <td><strong>Administrator</strong></td>
+    <td><em style="color:#aaa">••••••••</em></td>
+    <td><span style="color:#aaa;font-size:11px">Protected</span></td>
+  </tr>`;
+  getUsers().forEach(u=>{
+    tb.innerHTML+=`<tr>
+      <td><code>${u.id}</code></td>
+      <td>${u.name}</td>
+      <td>${u.role}</td>
+      <td><span style="font-family:monospace;color:#888">${u.pass}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-outline" style="padding:4px 10px;font-size:11px;margin-right:4px" onclick="editUser('${u.id}')">Edit</button>
+        <button class="btn btn-red"     style="padding:4px 10px;font-size:11px" onclick="deleteUser('${u.id}')">Remove</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function saveUser(){
+  const name=document.getElementById('uf_name').value.trim();
+  const id=document.getElementById('uf_id').value.trim().toLowerCase().replace(/\s+/g,'');
+  const pass=document.getElementById('uf_pass').value.trim();
+  const role=document.getElementById('uf_role').value;
+  const msg=document.getElementById('userFormMsg');
+  if(!name||!id||!pass||!role){msg.textContent='All fields are required.';return;}
+  if(id==='admin'){msg.textContent='User ID "admin" is reserved.';return;}
+
+  const users=getUsers();
+  if(editingUserId){
+    // Update existing
+    const idx=users.findIndex(u=>u.id===editingUserId);
+    if(idx===-1){msg.textContent='User not found.';return;}
+    // If ID changed, check no clash
+    if(id!==editingUserId && users.some(u=>u.id===id)){msg.textContent='User ID already exists.';return;}
+    users[idx]={id,pass,name,role,level:'user'};
+  } else {
+    // New user
+    if(users.some(u=>u.id===id)){msg.textContent='User ID already exists.';return;}
+    users.push({id,pass,name,role,level:'user'});
+  }
+  saveUsers(users);
+  cancelUserEdit();
+  renderUserTable();
+}
+
+function editUser(id){
+  const u=getUsers().find(x=>x.id===id);
+  if(!u)return;
+  editingUserId=id;
+  document.getElementById('uf_name').value=u.name;
+  document.getElementById('uf_id').value=u.id;
+  document.getElementById('uf_pass').value=u.pass;
+  document.getElementById('uf_role').value=u.role;
+  document.getElementById('userFormTitle').textContent='Edit User: '+u.id;
+  document.getElementById('uf_id').disabled=true; // lock ID during edit
+  document.getElementById('userFormMsg').textContent='';
+}
+
+function deleteUser(id){
+  if(!confirm('Remove user "'+id+'"? They will no longer be able to log in.'))return;
+  saveUsers(getUsers().filter(u=>u.id!==id));
+  if(editingUserId===id)cancelUserEdit();
+  renderUserTable();
+}
+
+function cancelUserEdit(){
+  editingUserId=null;
+  ['uf_name','uf_id','uf_pass'].forEach(i=>{document.getElementById(i).value='';});
+  document.getElementById('uf_role').value='';
+  document.getElementById('uf_id').disabled=false;
+  document.getElementById('userFormTitle').textContent='Add New User';
+  document.getElementById('userFormMsg').textContent='';
+}
+
+function addSite(){
+  const inp=document.getElementById('newSiteInput');
+  const name=inp.value.trim().toUpperCase();
+  if(!name){return;}
+  if(getSites().includes(name)){alert('Site already exists.');return;}
+  saveSite(name);inp.value='';renderAdmin();buildForms();
+}
+
+function saveSheetsURL(){
+  const url=document.getElementById('sheetsURL').value.trim();
+  localStorage.setItem('pmfSheetsURL',url);
+  document.getElementById('sheetsAlert').innerHTML='<div class="alert alert-success">URL saved.</div>';
+  setTimeout(()=>{document.getElementById('sheetsAlert').innerHTML='';},3000);
+}
+
+async function sendToSheets(form,data){
+  const url=localStorage.getItem('pmfSheetsURL');
+  if(!url)return;
+  try{
+    await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({form,data,user:currentUser.id,ts:new Date().toISOString()})});
+  }catch(e){console.warn('Sheets sync failed',e);}
+}
+
+async function syncToSheets(){
+  const url=localStorage.getItem('pmfSheetsURL');
+  const el=document.getElementById('sheetsAlert');
+  if(!url){el.innerHTML='<div class="alert alert-error">No Google Sheets URL saved.</div>';return;}
+  el.innerHTML='<div class="alert alert-info">Syncing…</div>';
+  for(const f of FORM_META){
+    for(const resp of getResponses(f.key)){
+      await sendToSheets(f.key,resp);
+    }
+  }
+  el.innerHTML='<div class="alert alert-success">All data synced to Google Sheets.</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CSV EXPORT
+// ═══════════════════════════════════════════════════════════════
+function flattenObj(obj,prefix=''){
+  const result={};
+  for(const [k,v] of Object.entries(obj)){
+    const key=prefix?prefix+'_'+k:k;
+    if(v&&typeof v==='object'&&!Array.isArray(v)){Object.assign(result,flattenObj(v,key));}
+    else{result[key]=v;}
+  }
+  return result;
+}
+
+function exportCSV(form){
+  const resp=getResponses(form);
+  if(!resp.length){alert('No data for this form yet.');return;}
+  const flat=resp.map(r=>flattenObj(r));
+  const keys=[...new Set(flat.flatMap(r=>Object.keys(r)))];
+  const csv=[keys.join(','),...flat.map(r=>keys.map(k=>{const v=r[k]??'';return '"'+String(v).replace(/"/g,'""')+'"';}).join(','))].join('\n');
+  downloadCSV(csv,'PMF_MCR_Form'+form+'_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+
+function exportAllCSV(){
+  FORM_META.forEach(f=>{
+    const resp=getResponses(f.key);
+    if(resp.length)exportCSV(f.key);
+  });
+}
+
+function downloadCSV(csv,filename){
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+}
+
+function clearAllData(){
+  if(!confirm('This will permanently delete ALL response data. Are you sure?'))return;
+  FORM_META.forEach(f=>localStorage.removeItem('pmfResp_'+f.key));
+  renderDashboard();renderAdmin();
+  alert('All response data cleared.');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&currentUser)showPage('dashboard');});
+</script>
+</body>
+</html>
